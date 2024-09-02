@@ -112,9 +112,9 @@ int main(int argc, char* argv[]) {
     for (const string& word : words) {
         int row = -1, col = -1;
         if (searchWord(grid, rows, cols, word, row, col)) {
-            cout << word << ": " << row << "," << col << endl;
+            cout << row << "," << col << endl;
         } else {
-            cout << word << ": -1,-1" << endl;
+            cout << "-1,-1" << endl;
         }
     }
 
