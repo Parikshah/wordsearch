@@ -22,7 +22,6 @@ char** loadGrid(const string& filename, int& rows, int& cols) {
     while (getline(file, line)) {
         // Remove spaces and convert to lowercase
         line.erase(remove_if(line.begin(), line.end(), ::isspace), line.end());
-        transform(line.begin(), line.end(), line.begin(), ::tolower);
         lines.push_back(line);
     }
 
@@ -45,13 +44,15 @@ char** loadGrid(const string& filename, int& rows, int& cols) {
 // Function to search for the word in the grid
 bool searchWord(char** grid, int rows, int cols, const string& word, int& outRow, int& outCol) {
     int len = word.size();
+    string lowerWord = word;
+    transform(lowerWord.begin(), lowerWord.end(), lowerWord.begin(), ::tolower);
 
     // Directions: right, left, down, up, diagonals
     int dir[8][2] = {{0,1}, {0,-1}, {1,0}, {-1,0}, {1,1}, {1,-1}, {-1,1}, {-1,-1}};
 
     for (int r = 0; r < rows; ++r) {
         for (int c = 0; c < cols; ++c) {
-            if (grid[r][c] == word[0]) {  // Match first letter
+            if (tolower(grid[r][c]) == lowerWord[0]) {  // Match first letter
                 for (auto& d : dir) {
                     int k, rd = r, cd = c;
                     for (k = 1; k < len; ++k) {
@@ -59,7 +60,7 @@ bool searchWord(char** grid, int rows, int cols, const string& word, int& outRow
                         cd += d[1];
 
                         // Out of bounds or mismatch
-                        if (rd < 0 || rd >= rows || cd < 0 || cd >= cols || grid[rd][cd] != word[k]) {
+                        if (rd < 0 || rd >= rows || cd < 0 || cd >= cols || tolower(grid[rd][cd]) != lowerWord[k]) {
                             break;
                         }
                     }
@@ -88,7 +89,6 @@ vector<string> loadWords(const string& filename) {
     while (getline(file, word)) {
         // Remove spaces and convert to lowercase
         word.erase(remove_if(word.begin(), word.end(), ::isspace), word.end());
-        transform(word.begin(), word.end(), word.begin(), ::tolower);
         words.push_back(word);
     }
 
