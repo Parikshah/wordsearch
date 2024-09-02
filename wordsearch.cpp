@@ -2,127 +2,156 @@
 
 #include <iostream>
 #include <fstream>
-#include <string>
 #include <vector>
+#include <string>
+#include <unordered_map>
 #include <algorithm>
-#include <cctype>
 
 using namespace std;
 
-// Function to load the grid from the file
-char** loadGrid(const string& filename, int& rows, int& cols) {
+// Function to load words from a file and create a dictionary
+unordered_map<string, string> loadWords(const string& filename) {
+    unordered_map<string, string> words_dict;
+    ifstream file(filename);
+    if (!file.is_open()) {
+        cerr << "Failed to open words file: " << filename << endl;
+        exit(1);
+    }
+
+    string line;
+    while (getline(file, line)) {
+        size_t pos = line.find(':');
+        if (pos != string::npos) {
+            string forward_word = line.substr(0, pos);
+            string backward_word = line.substr(pos + 1);
+            words_dict[forward_word] = backward_word;
+        }
+    }
+
+    file.close();
+    return words_dict;
+}
+
+// Function to read the word grid from a file
+vector<vector<string>> readWordGrid(const string& filename) {
+    vector<vector<string>> word_grid;
     ifstream file(filename);
     if (!file.is_open()) {
         cerr << "Failed to open grid file: " << filename << endl;
         exit(1);
     }
 
-    vector<string> lines;
     string line;
     while (getline(file, line)) {
-        // Remove spaces and convert to lowercase
-        line.erase(remove_if(line.begin(), line.end(), ::isspace), line.end());
-        lines.push_back(line);
-    }
-
-    rows = lines.size();
-    cols = lines.empty() ? 0 : lines[0].size();
-
-    // Dynamically allocate a 2D array for the grid
-    char** grid = new char*[rows];
-    for (int i = 0; i < rows; ++i) {
-        grid[i] = new char[cols];
-        for (int j = 0; j < cols; ++j) {
-            grid[i][j] = lines[i][j];
+        vector<string> row;
+        size_t pos = 0;
+        while ((pos = line.find(' ')) != string::npos) {
+            row.push_back(line.substr(0, pos));
+            line.erase(0, pos + 1);
         }
+        row.push_back(line); // Add the last word in the row
+        word_grid.push_back(row);
     }
 
     file.close();
-    return grid;
+    return word_grid;
 }
 
-// Function to search for the word in the grid
-bool searchWord(char** grid, int rows, int cols, const string& word, int& outRow, int& outCol) {
-    int len = word.size();
-    string lowerWord = word;
-    transform(lowerWord.begin(), lowerWord.end(), lowerWord.begin(), ::tolower);
+// Function to search for a word within a line (horizontal or vertical)
+pair<int, int> searchWithinLine(const vector<string>& line, const string& word) {
+    string line_str;
+    for (const auto& w : line) {
+        line_str += w;
+    }
 
-    // Directions: right, left, down, up, diagonals
-    int dir[8][2] = {{0,1}, {0,-1}, {1,0}, {-1,0}, {1,1}, {1,-1}, {-1,1}, {-1,-1}};
+    size_t pos = line_str.find(word);
+    if (pos != string::npos) {
+        int col = pos;
+        for (size_t i = 0; i < line.size(); ++i) {
+            if (col < line[i].size()) {
+                return {col, static_cast<int>(i)};
+            }
+            col -= line[i].size();
+        }
+    }
 
-    for (int r = 0; r < rows; ++r) {
-        for (int c = 0; c < cols; ++c) {
-            if (tolower(grid[r][c]) == lowerWord[0]) {  // Match first letter
-                for (auto& d : dir) {
-                    int k, rd = r, cd = c;
-                    for (k = 1; k < len; ++k) {
-                        rd += d[0];
-                        cd += d[1];
+    return {-1, -1};
+}
 
-                        // Out of bounds or mismatch
-                        if (rd < 0 || rd >= rows || cd < 0 || cd >= cols || tolower(grid[rd][cd]) != lowerWord[k]) {
-                            break;
-                        }
-                    }
-                    if (k == len) { // Found the word
-                        outRow = r;
-                        outCol = c;
-                        return true;
-                    }
-                }
+// Function to search for words horizontally in the word grid
+vector<pair<string, pair<int, int>>> searchHorizontal(const vector<vector<string>>& word_grid, const unordered_map<string, string>& words_dict) {
+    vector<pair<string, pair<int, int>>> found_words;
+    for (int row = 0; row < word_grid.size(); ++row) {
+        for (const auto& pair : words_dict) {
+            const string& word = pair.first;
+            auto result = searchWithinLine(word_grid[row], word);
+            if (result.first != -1) {
+                found_words.push_back({word, {row, result.first}});
             }
         }
     }
-    return false;
+    return found_words;
 }
 
-// Function to load words from the word list file
-vector<string> loadWords(const string& filename) {
-    ifstream file(filename);
-    if (!file.is_open()) {
-        cerr << "Failed to open word file: " << filename << endl;
-        exit(1);
-    }
+// Function to transpose the word grid for vertical search
+vector<vector<string>> transposeGrid(const vector<vector<string>>& word_grid) {
+    int rows = word_grid.size();
+    int cols = word_grid[0].size();
+    vector<vector<string>> transposed_grid(cols, vector<string>(rows));
 
-    vector<string> words;
-    string word;
-    while (getline(file, word)) {
-        // Remove spaces and convert to lowercase
-        word.erase(remove_if(word.begin(), word.end(), ::isspace), word.end());
-        words.push_back(word);
-    }
-
-    file.close();
-    return words;
-}
-
-int main(int argc, char* argv[]) {
-    if (argc != 3) {
-        cerr << "Usage: " << argv[0] << " gridfile.txt wordfile.txt" << endl;
-        return 1;
-    }
-
-    string gridFile = argv[1];
-    string wordFile = argv[2];
-
-    int rows, cols;
-    char** grid = loadGrid(gridFile, rows, cols);
-    vector<string> words = loadWords(wordFile);
-
-    for (const string& word : words) {
-        int row = -1, col = -1;
-        if (searchWord(grid, rows, cols, word, row, col)) {
-            cout << row << "," << col << endl;
-        } else {
-            cout << "-1,-1" << endl;
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            transposed_grid[j][i] = word_grid[i][j];
         }
     }
 
-    // Free dynamically allocated memory
-    for (int i = 0; i < rows; ++i) {
-        delete[] grid[i];
+    return transposed_grid;
+}
+
+// Function to search for words vertically in the transposed grid
+vector<pair<string, pair<int, int>>> searchVertical(const vector<vector<string>>& word_grid, const unordered_map<string, string>& words_dict) {
+    auto transposed_grid = transposeGrid(word_grid);
+    vector<pair<string, pair<int, int>>> found_words;
+    for (int col = 0; col < transposed_grid.size(); ++col) {
+        for (const auto& pair : words_dict) {
+            const string& word = pair.first;
+            auto result = searchWithinLine(transposed_grid[col], word);
+            if (result.first != -1) {
+                found_words.push_back({word, {result.second, col}});
+            }
+        }
     }
-    delete[] grid;
+    return found_words;
+}
+
+// Main function to execute the word search
+int main(int argc, char* argv[]) {
+    if (argc != 3) {
+        cerr << "Usage: " << argv[0] << " <words file> <grid file>" << endl;
+        return 1;
+    }
+
+    string words_file = argv[1];
+    string grid_file = argv[2];
+
+    unordered_map<string, string> words_dict = loadWords(words_file);
+    vector<vector<string>> word_grid = readWordGrid(grid_file);
+
+    vector<pair<string, pair<int, int>>> found_words;
+
+    // Search horizontally
+    vector<pair<string, pair<int, int>>> horizontal_results = searchHorizontal(word_grid, words_dict);
+    found_words.insert(found_words.end(), horizontal_results.begin(), horizontal_results.end());
+
+    // Search vertically
+    vector<pair<string, pair<int, int>>> vertical_results = searchVertical(word_grid, words_dict);
+    found_words.insert(found_words.end(), vertical_results.begin(), vertical_results.end());
+
+    // Print results
+    for (const auto& pair : found_words) {
+        cout << pair.second.first << "," << pair.second.second << endl;
+    }
 
     return 0;
 }
+
