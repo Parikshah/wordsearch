@@ -13,7 +13,7 @@ using namespace std;
 char** loadGrid(const string& filename, int& rows, int& cols) {
     ifstream file(filename);
     if (!file.is_open()) {
-        cerr << "Failed to open file: " << filename << endl;
+        cerr << "Failed to open grid file: " << filename << endl;
         exit(1);
     }
 
@@ -79,7 +79,7 @@ bool searchWord(char** grid, int rows, int cols, const string& word, int& outRow
 vector<string> loadWords(const string& filename) {
     ifstream file(filename);
     if (!file.is_open()) {
-        cerr << "Failed to open file: " << filename << endl;
+        cerr << "Failed to open word file: " << filename << endl;
         exit(1);
     }
 
@@ -112,9 +112,9 @@ int main(int argc, char* argv[]) {
     for (const string& word : words) {
         int row = -1, col = -1;
         if (searchWord(grid, rows, cols, word, row, col)) {
-            cout << row << "," << col << endl;
+            cout << word << ": " << row << "," << col << endl;
         } else {
-            cout << "-1,-1" << endl;
+            cout << word << ": -1,-1" << endl;
         }
     }
 
