@@ -1,5 +1,3 @@
-// Pari K. Shah
-
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -13,7 +11,7 @@ using namespace std;
 char** loadGrid(const string& filename, int& rows, int& cols) {
     ifstream file(filename);
     if (!file.is_open()) {
-        cerr << "Failed to open file" << endl;
+        cerr << "Failed to open file: " << filename << endl;
         exit(1);
     }
 
@@ -79,7 +77,7 @@ bool searchWord(char** grid, int rows, int cols, const string& word, int& outRow
 vector<string> loadWords(const string& filename) {
     ifstream file(filename);
     if (!file.is_open()) {
-        cerr << "Failed to open file" << endl;
+        cerr << "Failed to open file: " << filename << endl;
         exit(1);
     }
 
@@ -96,10 +94,18 @@ vector<string> loadWords(const string& filename) {
     return words;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    if (argc != 3) {
+        cerr << "Usage: " << argv[0] << " gridfile.txt wordfile.txt" << endl;
+        return 1;
+    }
+
+    string gridFile = argv[1];
+    string wordFile = argv[2];
+
     int rows, cols;
-    char** grid = loadGrid("grid.txt", rows, cols);
-    vector<string> words = loadWords("words.txt");
+    char** grid = loadGrid(gridFile, rows, cols);
+    vector<string> words = loadWords(wordFile);
 
     for (const string& word : words) {
         int row = -1, col = -1;
